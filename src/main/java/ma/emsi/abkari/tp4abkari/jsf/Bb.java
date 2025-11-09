@@ -1,18 +1,15 @@
 package ma.emsi.abkari.tp4abkari.jsf;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.service.TokenStream;
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.model.SelectItem;
-import jakarta.faces.push.Push;
-import jakarta.faces.push.PushContext;
 import jakarta.faces.view.ViewScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import ma.emsi.abkari.tp4abkari.llm.LlmClient;
 
 import java.io.Serializable;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,11 +26,6 @@ public class Bb implements Serializable {
 
     @Inject
     private FacesContext facesContext;
-
-    // WebSocket push context
-    @Inject
-    @Push(channel = "chat")
-    private PushContext webSocketPourChat;
 
     private LlmClient llmClient;
 
@@ -76,7 +68,7 @@ public class Bb implements Serializable {
         this.conversation = new StringBuilder(conversation);
     }
 
-    public String envoyer() {
+    public String envoyer() throws URISyntaxException {
         if (question == null || question.isBlank()) {
             FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR,
                     "Texte question vide", "Il manque le texte de la question");
@@ -94,25 +86,9 @@ public class Bb implements Serializable {
         }
 
         try {
-            // Réinitialiser la réponse
-            reponse = "";
+            reponse = llmClient.chat(question);
 
-            TokenStream tokenStream = llmClient.envoyerRequete(question);
-
-            tokenStream
-                    .onPartialResponse(tokens -> {
-                        // Envoyer chaque groupe de tokens via WebSocket
-                        webSocketPourChat.send(tokens);
-                    })
-                    .onCompleteResponse(response -> {
-                        AiMessage message = response.aiMessage();
-                        this.reponse = message.text();
-                        llmClient.addReponse(message);
-                        miseAJourConversation();
-                    })
-                    .onError(Throwable::printStackTrace)
-                    .start();
-
+            afficherConversation();
         } catch (Exception e) {
             FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_ERROR,
                     "Erreur LLM", "Erreur lors de la communication avec le LLM: " + e.getMessage());
@@ -126,12 +102,8 @@ public class Bb implements Serializable {
         return "index";
     }
 
-    private void miseAJourConversation() {
-        this.conversation.append("== User:\n")
-                .append(question)
-                .append("\n== Serveur:\n")
-                .append(reponse)
-                .append("\n");
+    private void afficherConversation() {
+        this.conversation.append("== User:\n").append(question).append("\n== Serveur:\n").append(reponse).append("\n");
     }
 
     public List<SelectItem> getRolesSysteme() {

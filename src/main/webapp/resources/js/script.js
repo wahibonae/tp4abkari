@@ -18,17 +18,3 @@ function toutEffacer() {
     document.getElementById("form:question").value = "";
     document.getElementById("form:reponse").value = "";
 }
-
-/* Fonction appelée quand un message arrive via WebSocket */
-function socketListener(message, channel, event) {
-    // Récupérer le textarea de la réponse
-    var reponseTextArea = document.getElementById("form:reponse");
-
-    if (reponseTextArea) {
-        // Ajouter les nouveaux tokens à la réponse existante
-        reponseTextArea.value += message;
-
-        // Faire défiler automatiquement vers le bas
-        reponseTextArea.scrollTop = reponseTextArea.scrollHeight;
-    }
-}

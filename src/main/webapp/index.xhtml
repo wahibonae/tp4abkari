@@ -47,9 +47,7 @@
                         <h:inputTextarea id="question" value="#{bb.question}" title="Question"
                                          cols="50" rows="5"/>
 
-                        <h:commandButton value="Envoyer la question" action="#{bb.envoyer()}">
-                            <f:ajax execute="@form" render="conversationId"/>
-                        </h:commandButton>
+                        <h:commandButton value="Envoyer la question" action="#{bb.envoyer}"/>
 
                         <h:panelGroup>
                             <h:outputText value="Réponse :"/>
@@ -71,8 +69,6 @@
 
             </h:panelGrid>
         </h:form>
-
-        <f:websocket channel="chat" scope="view" onmessage="socketListener"/>
     </f:view>
 </h:body>
 </html>
