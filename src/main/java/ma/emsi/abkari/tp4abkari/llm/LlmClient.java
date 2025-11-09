@@ -41,6 +41,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.*;
+
+import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.query.Query;
 
 public class LlmClient {
     // Clé pour l'API du LLM
@@ -114,10 +119,39 @@ public class LlmClient {
                 .webSearchEngine(webSearchEngine)
                 .build();
 
+        // nouvelle technique de wahib :)
+        // QueryRouter entre 3 resources: webRetriver - pdfRetriever - LLM normal (aucun RAG)
+        QueryRouter queryRouter = new QueryRouter() {
+            @Override
+            public Collection<ContentRetriever> route(Query query) {
+                PromptTemplate promptTemplate = PromptTemplate.from(
+                        """
+                        Analyse cette requête: "{{requete}}"
+                        
+                        Détermine quelles sources sont nécessaires:
+                        - "PDF" si la question porte sur des documents/informations sur le Machine Learning, LLMs, RAG, Agents IA, MCP
+                        - "WEB" si la question nécessite des informations en temps réel ou actuelles d'internet
+                        - "NONE" si c'est une question générale qui ne nécessite pas de recherche
+                        
+                        Réponds UNIQUEMENT par: PDF, WEB, ou NONE
+                        """
+                );
 
-        QueryRouter queryRouter = new DefaultQueryRouter(
-                Arrays.asList(pdfRetriever, webRetriever)
-        );
+                Prompt prompt = promptTemplate.apply(Map.of("requete", query.text()));
+                String response = chatModel.chat(prompt.text()).trim().toUpperCase();
+
+                System.out.println("Decision Router: " + response);
+
+               if (response.toLowerCase().contains("none")) {
+                   return Collections.emptyList();
+               } else if (response.toLowerCase().contains("web")) {
+                   return Collections.singletonList(webRetriever);
+               }
+
+               // Utiliser le pdfRetriever si la réponse n'est pas claire
+               return Collections.singletonList(pdfRetriever);
+            }
+        };
 
         RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(queryRouter)
