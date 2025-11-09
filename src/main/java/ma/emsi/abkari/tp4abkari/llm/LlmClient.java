@@ -12,11 +12,18 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
@@ -32,6 +39,7 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class LlmClient {
@@ -58,7 +66,7 @@ public class LlmClient {
             throw new RuntimeException("La clé API GEMINI_KEY n'est pas configurée");
         }
 
-        StreamingChatModel chatModel = GoogleAiGeminiStreamingChatModel.builder()
+        ChatModel chatModel = GoogleAiGeminiChatModel.builder()
                 .apiKey(key)
                 .modelName("gemini-2.5-flash")
                 .temperature(0.3)
@@ -96,6 +104,31 @@ public class LlmClient {
                 .embeddingModel(embeddingModel)
                 .maxResults(3)
                 .minScore(0.5)
+                .build();
+
+        WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(tavilyCle)
+                .build();
+
+        ContentRetriever webRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(webSearchEngine)
+                .build();
+
+
+        QueryRouter queryRouter = new DefaultQueryRouter(
+                Arrays.asList(pdfRetriever, webRetriever)
+        );
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(queryRouter)
+                .build();
+
+        this.chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        this.assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .retrievalAugmentor(retrievalAugmentor)
+                .chatMemory(chatMemory)
                 .build();
     }
 
