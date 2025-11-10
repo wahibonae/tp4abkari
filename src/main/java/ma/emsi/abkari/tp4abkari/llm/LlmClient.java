@@ -29,7 +29,9 @@ import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,10 +82,12 @@ public class LlmClient {
         URL resourceUrl = LlmClient.class.getResource("/");
         Path resourcePath = Paths.get(resourceUrl.toURI());
 
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**.pdf");
         DocumentParser documentParser = new ApacheTikaDocumentParser();
 
         List<Document> documents = FileSystemDocumentLoader.loadDocuments(
                 resourcePath,
+                pathMatcher,
                 documentParser
         );
 
